@@ -32,7 +32,7 @@ jobs:
           registry-url: https://npm.pkg.github.com/
       - run: yarn install --frozen-lockfile
       - run: yarn build
-      - run: npm version ${{ github.event.release.tag_name.replace('v', '') }}
+      - run: npm version ${{ github.event.release.tag_name }}
       - run: npm publish --access
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
