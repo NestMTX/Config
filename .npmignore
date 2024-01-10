@@ -23,3 +23,5 @@ tests
 tsconfig.json
 typedoc.json
 yarn.lock
+.github
+readme.docs.md
