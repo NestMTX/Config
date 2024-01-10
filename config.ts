@@ -47,7 +47,7 @@ export class Config {
    * @param path The path to the directory containing the configuration files.
    * @returns A promise that resolves to the Config instance.
    */
-  public async initialize(path: string) {
+  public static async initialize(path: string) {
     if (!(instance instanceof Config)) {
       const configObjectsFromFile: Record<string, any> = {}
       // make sure that the path actually exists
