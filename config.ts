@@ -21,6 +21,16 @@ export class Config {
   }
 
   /**
+   * Get the root configuration object.
+   * @returns The root configuration object.
+   */
+  public get root() {
+    const root = { ...this.#cache }
+    this.#freeze(root)
+    return root
+  }
+
+  /**
    * Get the value at the given path.
    * @param path The dot notation path to the value to get.
    * @param fallback The fallback value to return if the value is not set.
@@ -59,35 +69,46 @@ export class Config {
         throw new ConfigDirectoryIsNotDirectory(path)
       }
       // make a list of all of the files in the directory
-      const files = fs.readdirSync(path)
+      const files = fs
+        .readdirSync(path)
+        .filter((file) => /\.(js|mjs|cjs|json|ts|node)$/i.test(file))
+        .sort((a, b) => {
+          const importNameA = a
+            .split('.')
+            .slice(0, -1)
+            .filter((p) => !['config'].includes(p))
+            .join('.')
+          const importNameB = b
+            .split('.')
+            .slice(0, -1)
+            .filter((p) => !['config'].includes(p))
+            .join('.')
+          return importNameA.localeCompare(importNameB)
+        })
       // import all of the files in the directory that can be imported,
       // returning undefined for those that cannot be imported
-      const imports = Object.assign(
-        {},
-        ...(await Promise.all(
-          files.map(async (file) => {
-            const absolutePath = join(path, file)
-            const importName = file
-              .split('.')
-              .slice(0, -1)
-              .filter((p) => !['config'].includes(p))
-              .join('.')
-            try {
-              const imported = await import(absolutePath)
-              if (imported.default) {
-                return { [importName]: imported.default }
-              }
-              return { [importName]: imported }
-            } catch {
-              return { [importName]: undefined }
-            }
-          })
-        ))
+      const importArray = await Promise.all(
+        files.map(async (file) => {
+          const absolutePath = join(path, file)
+          const importName = file
+            .split('.')
+            .slice(0, -1)
+            .filter((p) => !['config'].includes(p))
+            .join('.')
+          const imported = await import(absolutePath)
+          if ('undefined' !== typeof imported.default) {
+            return { [importName]: imported.default }
+          }
+          return { [importName]: imported }
+        })
       )
+      const imports = Object.assign({}, ...importArray)
       // add all of the imported objects to the config object
       for (const key in imports) {
         if ('undefined' !== typeof imports[key]) {
           configObjectsFromFile[key] = imports[key]
+        } else if (imports[key] instanceof Error) {
+          throw imports[key]
         }
       }
       // create the config object
