@@ -95,8 +95,22 @@ export class Config {
             .slice(0, -1)
             .filter((p) => !['config'].includes(p))
             .join('.')
-          const imported = await import(absolutePath)
-          if ('undefined' !== typeof imported.default) {
+          let imported
+          try {
+            imported = await import(absolutePath)
+          } catch (e) {
+            if (e instanceof TypeError && e.message.includes('Unknown file extension')) {
+              imported = require(absolutePath)
+            } else {
+              throw e
+            }
+          }
+          if (
+            'object' === typeof imported &&
+            null !== imported &&
+            !Array.isArray(imported) &&
+            'undefined' !== typeof imported.default
+          ) {
             return { [importName]: imported.default }
           }
           return { [importName]: imported }
